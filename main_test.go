@@ -84,7 +84,10 @@ func createMockESServer(responses map[string]interface{}) *httptest.Server {
 				},
 				"tagline": "You Know, for Search",
 			}
-			json.NewEncoder(w).Encode(response)
+			err := json.NewEncoder(w).Encode(response)
+			if err != nil {
+				return
+			}
 			return
 		}
 
@@ -92,7 +95,10 @@ func createMockESServer(responses map[string]interface{}) *httptest.Server {
 		if invalidEndpoints, ok := responses["invalid_json"].(map[string]bool); ok {
 			if invalidEndpoints[path] {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte("{this is not valid JSON")) // deliberately malformed
+				_, err := w.Write([]byte("{this is not valid JSON"))
+				if err != nil {
+					return
+				} // deliberately malformed
 				return
 			}
 		}
@@ -101,35 +107,62 @@ func createMockESServer(responses map[string]interface{}) *httptest.Server {
 		switch {
 		case strings.Contains(path, "_cluster/health"):
 			if health, ok := responses["cluster_health"]; ok {
-				json.NewEncoder(w).Encode(health)
+				err := json.NewEncoder(w).Encode(health)
+				if err != nil {
+					return
+				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "health endpoint error"})
+				err := json.NewEncoder(w).Encode(map[string]string{"error": "health endpoint error"})
+				if err != nil {
+					return
+				}
 			}
 		case strings.Contains(path, "_cluster/state"):
 			if state, ok := responses["cluster_state"]; ok {
-				json.NewEncoder(w).Encode(state)
+				err := json.NewEncoder(w).Encode(state)
+				if err != nil {
+					return
+				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "state endpoint error"})
+				err := json.NewEncoder(w).Encode(map[string]string{"error": "state endpoint error"})
+				if err != nil {
+					return
+				}
 			}
 		case strings.Contains(path, "_nodes/stats") || strings.Contains(path, "_nodes/_local/stats"):
 			if stats, ok := responses["nodes_stats"]; ok {
-				json.NewEncoder(w).Encode(stats)
+				err := json.NewEncoder(w).Encode(stats)
+				if err != nil {
+					return
+				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "stats endpoint error"})
+				err := json.NewEncoder(w).Encode(map[string]string{"error": "stats endpoint error"})
+				if err != nil {
+					return
+				}
 			}
 		case strings.Contains(path, "_nodes/_local") || strings.Contains(path, "_nodes/info"):
 			if info, ok := responses["node_info"]; ok {
-				json.NewEncoder(w).Encode(info)
+				err := json.NewEncoder(w).Encode(info)
+				if err != nil {
+					return
+				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "info endpoint error"})
+				err := json.NewEncoder(w).Encode(map[string]string{"error": "info endpoint error"})
+				if err != nil {
+					return
+				}
 			}
 		default:
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
+			err := json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
+			if err != nil {
+				return
+			}
 		}
 	}))
 }
@@ -1136,7 +1169,10 @@ func TestExecuteCheck(t *testing.T) {
 			host := parts[0]
 			port := 80
 			if len(parts) > 1 {
-				fmt.Sscanf(parts[1], "%d", &port)
+				_, err := fmt.Sscanf(parts[1], "%d", &port)
+				if err != nil {
+					return
+				}
 			}
 
 			// Update config with mock server details
@@ -1176,8 +1212,8 @@ func TestErrorHandling(t *testing.T) {
 		expectedError  string
 	}{
 		{
-			name:          "Cluster health API error",
-			config:        createTestConfig(),
+			name:   "Cluster health API error",
+			config: createTestConfig(),
 			mockResponses: map[string]interface{}{
 				// No cluster_health response - will trigger error
 			},
@@ -1230,7 +1266,10 @@ func TestErrorHandling(t *testing.T) {
 			host := parts[0]
 			port := 80
 			if len(parts) > 1 {
-				fmt.Sscanf(parts[1], "%d", &port)
+				_, err := fmt.Sscanf(parts[1], "%d", &port)
+				if err != nil {
+					return
+				}
 			}
 
 			// Update config
@@ -1335,7 +1374,10 @@ func TestEdgeCases(t *testing.T) {
 			host := parts[0]
 			port := 80
 			if len(parts) > 1 {
-				fmt.Sscanf(parts[1], "%d", &port)
+				_, err := fmt.Sscanf(parts[1], "%d", &port)
+				if err != nil {
+					return
+				}
 			}
 
 			// Update config
@@ -1391,7 +1433,10 @@ func TestTimeoutAndConnection(t *testing.T) {
 			serverFunc: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(`{"error": "internal server error"}`))
+					_, err := w.Write([]byte(`{"error": "internal server error"}`))
+					if err != nil {
+						return
+					}
 				}))
 			},
 			expectedStatus: sensu.CheckStateCritical,
@@ -1413,7 +1458,10 @@ func TestTimeoutAndConnection(t *testing.T) {
 					host := parts[0]
 					port := 80
 					if len(parts) > 1 {
-						fmt.Sscanf(parts[1], "%d", &port)
+						_, err := fmt.Sscanf(parts[1], "%d", &port)
+						if err != nil {
+							return
+						}
 					}
 
 					tt.config.Host = host
