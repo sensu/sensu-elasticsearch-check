@@ -3,6 +3,8 @@ name: Bonsai
 ##
 # Only run this workflow after goreleaser completes
 ##
+permissions:
+  contents: read
 on:
   workflow_run:
     workflows:
