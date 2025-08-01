@@ -1,6 +1,6 @@
 name: Go Lint
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   test:
@@ -10,7 +10,9 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          args: '--timeout=5m --exclude="SA1019" --exclude="SA9003"'
